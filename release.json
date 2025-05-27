@@ -1,0 +1,17 @@
+{
+  "version": "1.0.12",
+  "windows": {
+    "url": "https://github.com/ahlulmukh/x-gen/releases/download/v1.0.12/x-gen.exe",
+    "checksum": "fa53df5449064040b18107a55f6b2124453ea5a033e31ec739de7c869b77284f"
+  },
+  "linux": {
+    "amd64": {
+      "url": "https://github.com/ahlulmukh/x-gen/releases/download/v1.0.12/x-gen-amd64",
+      "checksum": "c95cc44ca5d7cec72eb7efad4e615f3738fcd42b5e2c1e35be680995f061b370"
+    },
+    "arm64": {
+      "url": "https://github.com/ahlulmukh/x-gen/releases/download/v1.0.12/x-gen-arm64",
+      "checksum": "71b800da70af2013fe5ce72f6c72da8c35f6f7efe2c103cf4ef8df34d4fb6684"
+    }
+  }
+}
