@@ -2,12 +2,12 @@ package menu
 
 import (
 	"fmt"
-	"solix-bot/internal/proxy"
-	"solix-bot/internal/utils"
-	"solix-bot/internal/xgen"
 	"strconv"
 	"strings"
 	"sync"
+	"x-gen/internal/proxy"
+	"x-gen/internal/utils"
+	"x-gen/internal/xgen"
 )
 
 func (m *MenuHandler) RunTwitterGenerator() {

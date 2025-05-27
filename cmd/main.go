@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"solix-bot/internal/menu"
-	"solix-bot/internal/updater"
-	"solix-bot/internal/utils"
 	"strings"
+	"x-gen/internal/menu"
+	"x-gen/internal/updater"
+	"x-gen/internal/utils"
 )
 
 const version = "0.0.1"

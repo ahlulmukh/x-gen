@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"solix-bot/internal/captcha"
-	"solix-bot/internal/utils"
 	"strings"
+	"x-gen/internal/captcha"
+	"x-gen/internal/utils"
 
 	"github.com/fatih/color"
 )

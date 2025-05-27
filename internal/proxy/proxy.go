@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"solix-bot/internal/utils"
 	"strings"
 	"time"
+	"x-gen/internal/utils"
 )
 
 var (
