@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"time"
 	"x-gen/internal/utils"
@@ -17,6 +16,7 @@ type CaptchaServices struct {
 	pageUrl           string
 	cfSolved          string
 	antiCaptchaApiUrl string
+	twocaptchaApiUrl  string
 }
 
 type Config struct {
@@ -35,6 +35,7 @@ func NewCaptchaServices() *CaptchaServices {
 		pageUrl:           "https://x.com",
 		cfSolved:          config.CaptchaServices.UrlPrivate + "/cf-clearance-scraper",
 		antiCaptchaApiUrl: "https://api.anti-captcha.com",
+		twocaptchaApiUrl:  "https://api.2captcha.com",
 	}
 }
 
@@ -59,7 +60,7 @@ func (cs *CaptchaServices) SolveCaptcha(blob string) (string, error) {
 
 	switch provider {
 	case "2captcha":
-		return cs.solveCaptcha2()
+		return cs.solveCaptcha2(blob)
 	case "antiCaptcha":
 		return cs.antiCaptcha(blob)
 	case "private":
@@ -178,7 +179,7 @@ func (cs *CaptchaServices) solvedPrivate(blob string) (string, error) {
 }
 
 func (cs *CaptchaServices) antiCaptcha(blob string) (string, error) {
-	utils.LogMessage("Trying solving Fun Captcha...", "process")
+	utils.LogMessage("Trying solving Fun Captcha with anticaptcha ...", "process")
 	config := LoadConfig()
 	apiKey := config.CaptchaServices.AntiCaptchaApikey[0]
 
@@ -268,68 +269,93 @@ func (cs *CaptchaServices) antiCaptcha(blob string) (string, error) {
 	return result, nil
 }
 
-func (cs *CaptchaServices) solveCaptcha2() (string, error) {
-	utils.LogMessage("Trying solving captcha Turnstile...", "process")
+func (cs *CaptchaServices) solveCaptcha2(blob string) (string, error) {
+	utils.LogMessage("Trying solving Fun captcha with 2 captcha ...", "process")
 	config := LoadConfig()
 	apiKey := config.CaptchaServices.Captcha2Apikey[0]
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	reqData := map[string]string{
-		"key":     apiKey,
-		"method":  "turnstile",
-		"sitekey": cs.sitekey,
-		"pageurl": cs.pageUrl,
-		"json":    "1",
+	formattedBlob := fmt.Sprintf("{\"blob\":\"%s\"}", blob)
+
+	taskData := map[string]interface{}{
+		"clientKey": apiKey,
+		"task": map[string]interface{}{
+			"type":                     "FunCaptchaTaskProxyless",
+			"websiteURL":               cs.pageUrl,
+			"websitePublicKey":         cs.sitekey,
+			"funcaptchaApiJSSubdomain": "client-api.arkoselabs.com",
+			"data":                     formattedBlob,
+		},
+		"softId": 0,
 	}
 
-	form := url.Values{}
-	for k, v := range reqData {
-		form.Add(k, v)
+	jsonData, err := json.Marshal(taskData)
+	if err != nil {
+		return "", err
 	}
 
-	resp, err := client.PostForm("http://2captcha.com/in.php", form)
+	resp, err := http.Post(cs.twocaptchaApiUrl+"/createTask", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
-	var inResponse struct {
-		Status  int    `json:"status"`
-		Request string `json:"request"`
+	var createTaskResp struct {
+		ErrorId int    `json:"errorId"`
+		TaskId  int    `json:"taskId"`
+		Status  string `json:"status"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&inResponse); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&createTaskResp); err != nil {
 		return "", err
 	}
 
-	if inResponse.Status != 1 {
-		return "", fmt.Errorf("failed to submit captcha to 2captcha")
+	if createTaskResp.ErrorId != 0 || createTaskResp.TaskId == 0 {
+		return "", fmt.Errorf("failed to create task")
 	}
 
-	captchaID := inResponse.Request
-	utils.LogMessage(fmt.Sprintf("Captcha submitted, ID: %s", captchaID), "process")
+	utils.LogMessage(fmt.Sprintf("Task created with ID: %d", createTaskResp.TaskId), "process")
 
-	for i := 0; i < 20; i++ {
+	getTaskData := map[string]interface{}{
+		"clientKey": apiKey,
+		"taskId":    createTaskResp.TaskId,
+	}
+
+	var result string
+	for i := 0; i < 10; i++ {
 		time.Sleep(5 * time.Second)
-		resp, err := client.Get(fmt.Sprintf("http://2captcha.com/res.php?key=%s&action=get&id=%s&json=1", apiKey, captchaID))
+
+		jsonData, err = json.Marshal(getTaskData)
 		if err != nil {
 			continue
 		}
 
-		var resResponse struct {
-			Status  int    `json:"status"`
-			Request string `json:"request"`
+		resp, err = http.Post(cs.twocaptchaApiUrl+"/getTaskResult", "application/json", bytes.NewBuffer(jsonData))
+		if err != nil {
+			continue
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&resResponse); err != nil {
+
+		var taskResult struct {
+			ErrorId  int    `json:"errorId"`
+			Status   string `json:"status"`
+			Solution struct {
+				Token string `json:"token"`
+			} `json:"solution"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&taskResult); err != nil {
 			resp.Body.Close()
 			continue
 		}
 		resp.Body.Close()
 
-		if resResponse.Status == 1 {
+		if taskResult.Status == "ready" {
+			result = taskResult.Solution.Token
 			utils.LogMessage("Captcha solved successfully!", "success")
-			return resResponse.Request, nil
+			break
 		}
 	}
 
-	return "", fmt.Errorf("failed to solve captcha with 2captcha")
+	if result == "" {
+		return "", fmt.Errorf("failed to get captcha solution")
+	}
+
+	return result, nil
 }
