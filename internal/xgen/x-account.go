@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"solix-bot/internal/utils"
 	"strings"
 	"time"
+	"x-gen/internal/utils"
 )
 
 const (

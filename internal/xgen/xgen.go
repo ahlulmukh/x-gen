@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"solix-bot/internal/captcha"
-	"solix-bot/internal/utils"
 	"time"
+	"x-gen/internal/captcha"
+	"x-gen/internal/utils"
 )
 
 const (

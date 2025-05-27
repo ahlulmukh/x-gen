@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"solix-bot/internal/utils"
 	"strings"
+	"x-gen/internal/utils"
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
