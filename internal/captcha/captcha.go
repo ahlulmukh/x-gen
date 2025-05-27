@@ -14,7 +14,6 @@ import (
 type CaptchaServices struct {
 	sitekey           string
 	pageUrl           string
-	cfSolved          string
 	antiCaptchaApiUrl string
 	twocaptchaApiUrl  string
 }
@@ -29,11 +28,9 @@ type Config struct {
 }
 
 func NewCaptchaServices() *CaptchaServices {
-	config := LoadConfig()
 	return &CaptchaServices{
 		sitekey:           "2CB16598-CB82-4CF7-B332-5990DB66F3AB",
 		pageUrl:           "https://x.com",
-		cfSolved:          config.CaptchaServices.UrlPrivate + "/cf-clearance-scraper",
 		antiCaptchaApiUrl: "https://api.anti-captcha.com",
 		twocaptchaApiUrl:  "https://api.2captcha.com",
 	}
