@@ -6,7 +6,7 @@
 ![Go Version](https://img.shields.io/badge/go-1.24.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-![Screenshot](img.png)
+![Preview](preview.gif)
 
 ## 📋 Table of Contents
 
