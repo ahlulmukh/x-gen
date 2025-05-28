@@ -892,12 +892,6 @@ func (m *xGenerator) GenerateXAccount() (*XAccountInfo, error) {
 			blobData = m.extractBlobFromTaskResponse(responseData)
 			if blobData != "" {
 				utils.LogMessage("Successfully extracted blob data for FunCaptcha!", "info")
-				// captchaToken, err := m.captcha.SolveCaptcha(m.currentNum, m.total, blobData)
-				// if err != nil {
-				// 	return nil, fmt.Errorf("failed to solve captcha: %v", err)
-				// }
-				// print("Captcha token: ")
-				// fmt.Println(captchaToken)
 			}
 			break
 		}
@@ -944,10 +938,7 @@ func (m *xGenerator) GenerateXAccount() (*XAccountInfo, error) {
 	if mailHandler != nil {
 		code, err := mailHandler.WaitForVerificationEmail(15)
 		if err != nil {
-			utils.LogMessage(fmt.Sprintf("Failed to get verification code automatically: %v", err), "error")
-			utils.LogMessage("Falling back to manual verification...", "info")
-			fmt.Print("Enter verification code: ")
-			fmt.Scan(&verificationCode)
+			return nil, fmt.Errorf("failed to get verification code from email: %v", err)
 		} else {
 			verificationCode = code
 			utils.LogMessage(fmt.Sprintf("Verification code obtained automatically: %s", verificationCode), "success")
