@@ -944,10 +944,7 @@ func (m *xGenerator) GenerateXAccount() (*XAccountInfo, error) {
 	if mailHandler != nil {
 		code, err := mailHandler.WaitForVerificationEmail(15)
 		if err != nil {
-			utils.LogMessage(fmt.Sprintf("Failed to get verification code automatically: %v", err), "error")
-			utils.LogMessage("Falling back to manual verification...", "info")
-			fmt.Print("Enter verification code: ")
-			fmt.Scan(&verificationCode)
+			return nil, fmt.Errorf("failed to get verification code from email: %v", err)
 		} else {
 			verificationCode = code
 			utils.LogMessage(fmt.Sprintf("Verification code obtained automatically: %s", verificationCode), "success")
