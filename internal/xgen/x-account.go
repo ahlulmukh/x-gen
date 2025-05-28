@@ -892,12 +892,6 @@ func (m *xGenerator) GenerateXAccount() (*XAccountInfo, error) {
 			blobData = m.extractBlobFromTaskResponse(responseData)
 			if blobData != "" {
 				utils.LogMessage("Successfully extracted blob data for FunCaptcha!", "info")
-				// captchaToken, err := m.captcha.SolveCaptcha(m.currentNum, m.total, blobData)
-				// if err != nil {
-				// 	return nil, fmt.Errorf("failed to solve captcha: %v", err)
-				// }
-				// print("Captcha token: ")
-				// fmt.Println(captchaToken)
 			}
 			break
 		}
