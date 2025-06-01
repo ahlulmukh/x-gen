@@ -1,17 +1,17 @@
 {
-  "version": "0.0.2",
+  "version": "0.0.3",
   "windows": {
-    "url": "https://github.com/ahlulmukh/x-gen/releases/download/v0.0.2/x-gen.exe",
-    "checksum": "052c69ac67d0894a3c0464da3123186eb1dad2640f602bec284350b5be276c23"
+    "url": "https://github.com/ahlulmukh/x-gen/releases/download/v0.0.3/x-gen.exe",
+    "checksum": "d33b34208e2b9bd54ee8d9699d1b4f6ab0c8d7ae5ca68df0f4a6ad6990183558"
   },
   "linux": {
     "amd64": {
-      "url": "https://github.com/ahlulmukh/x-gen/releases/download/v0.0.2/x-gen-amd64",
-      "checksum": "9c7ee9b455561bac80988684a2f3aab7c8fc19d285ff23ea80734991f0e80265"
+      "url": "https://github.com/ahlulmukh/x-gen/releases/download/v0.0.3/x-gen-amd64",
+      "checksum": "0845c10a2188dc38d2446a8698a150eacfb1039d9e19773dd1e0f0cd696f74a3"
     },
     "arm64": {
-      "url": "https://github.com/ahlulmukh/x-gen/releases/download/v0.0.2/x-gen-arm64",
-      "checksum": "f97511e0531627daca1a0272feaed66c1ff20ac12a8c7bef352edb40ba2c0460"
+      "url": "https://github.com/ahlulmukh/x-gen/releases/download/v0.0.3/x-gen-arm64",
+      "checksum": "e30c676dd5ed08174804979343429d99da0dddba16b2a6982bc7f745752aa80d"
     }
   }
 }
