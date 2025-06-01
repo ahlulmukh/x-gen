@@ -2,7 +2,7 @@
 
 🤖 **Powerful automated tool for creating X.com accounts with email verification and captcha solving**
 
-![Version](https://img.shields.io/badge/version-0.0.2-blue.svg)
+![Version](https://img.shields.io/badge/version-0.0.3-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-1.24.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
