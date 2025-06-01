@@ -40,10 +40,9 @@ func NewXGenerator(proxy string) *xGenerator {
 			utils.LogMessage(fmt.Sprintf("Invalid proxy URL: %v", err), "warning")
 		}
 	}
-
 	return &xGenerator{
 		proxy:      proxy,
-		captcha:    captcha.NewCaptchaServices(),
+		captcha:    captcha.NewCaptchaServicesWithProxy(proxy),
 		httpClient: httpClient,
 	}
 }
