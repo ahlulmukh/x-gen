@@ -297,49 +297,79 @@ func (cs *CaptchaServices) antiCaptcha(blob string) (string, error) {
 
 	getTaskData := map[string]interface{}{
 		"clientKey": apiKey,
-		"taskId":    createTaskResp.TaskId,
-	}
+		"taskId":    createTaskResp.TaskId}
 
 	var result string
-	for i := 0; i < 999; i++ {
+	attempt := 0
+
+	for {
+		attempt++
 		time.Sleep(5 * time.Second)
 
 		jsonData, err = json.Marshal(getTaskData)
 		if err != nil {
+			utils.LogMessage(fmt.Sprintf("Failed to marshal request: %v", err), "warning")
 			continue
 		}
 
 		resp, err = http.Post(cs.antiCaptchaApiUrl+"/getTaskResult", "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
+			utils.LogMessage(fmt.Sprintf("HTTP request failed: %v", err), "warning")
 			continue
 		}
 
 		var taskResult struct {
-			ErrorId  int    `json:"errorId"`
-			Status   string `json:"status"`
-			Solution struct {
+			ErrorId          int    `json:"errorId"`
+			Status           string `json:"status"`
+			ErrorCode        string `json:"errorCode"`
+			ErrorDescription string `json:"errorDescription"`
+			Solution         struct {
 				Token string `json:"token"`
 			} `json:"solution"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&taskResult); err != nil {
-			resp.Body.Close()
-			continue
-		}
+
+		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
-		if taskResult.Status == "ready" {
-			result = taskResult.Solution.Token
-			utils.LogMessage("Captcha solved successfully!", "success")
-			break
+		if err != nil {
+			utils.LogMessage(fmt.Sprintf("Failed to read response: %v", err), "warning")
+			continue
+		}
+
+		if err := json.Unmarshal(body, &taskResult); err != nil {
+			utils.LogMessage(fmt.Sprintf("Failed to parse response: %v", err), "warning")
+			continue
+		}
+
+		utils.LogMessage(fmt.Sprintf("Attempt %d: Status = %s", attempt, taskResult.Status), "info")
+
+		if taskResult.ErrorId != 0 {
+			utils.LogMessage(fmt.Sprintf("API Error - ID: %d, Code: %s, Description: %s",
+				taskResult.ErrorId, taskResult.ErrorCode, taskResult.ErrorDescription), "error")
+			return "", fmt.Errorf("captcha solving failed: %s", taskResult.ErrorDescription)
+		}
+
+		switch taskResult.Status {
+		case "processing":
+			utils.LogMessage("Captcha still processing...", "info")
+			continue
+		case "ready":
+			if taskResult.Solution.Token != "" {
+				result = taskResult.Solution.Token
+				utils.LogMessage("Captcha solved successfully!", "success")
+				return result, nil
+			} else {
+				utils.LogMessage("Status ready but no token received", "warning")
+				continue
+			}
+		case "failed":
+			utils.LogMessage("Captcha solving failed", "error")
+			return "", fmt.Errorf("captcha solving failed with status: failed")
+		default:
+			utils.LogMessage(fmt.Sprintf("Unknown status: %s", taskResult.Status), "warning")
+			continue
 		}
 	}
-
-	if result == "" {
-		utils.LogMessage(fmt.Sprintf("Full response: %s", string(body)), "error")
-		return "", fmt.Errorf("failed to get captcha solution")
-	}
-
-	return result, nil
 }
 
 func (cs *CaptchaServices) solveCaptcha2(blob string) (string, error) {
@@ -414,50 +444,80 @@ func (cs *CaptchaServices) solveCaptcha2(blob string) (string, error) {
 	}
 
 	utils.LogMessage(fmt.Sprintf("Task created with ID: %d", createTaskResp.TaskId), "process")
-
 	getTaskData := map[string]interface{}{
 		"clientKey": apiKey,
 		"taskId":    createTaskResp.TaskId,
 	}
 
 	var result string
-	for i := 0; i < 10; i++ {
+	attempt := 0
+
+	for {
+		attempt++
 		time.Sleep(5 * time.Second)
 
 		jsonData, err = json.Marshal(getTaskData)
 		if err != nil {
+			utils.LogMessage(fmt.Sprintf("Failed to marshal request: %v", err), "warning")
 			continue
 		}
 
 		resp, err = http.Post(cs.twocaptchaApiUrl+"/getTaskResult", "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
+			utils.LogMessage(fmt.Sprintf("HTTP request failed: %v", err), "warning")
 			continue
 		}
 
 		var taskResult struct {
-			ErrorId  int    `json:"errorId"`
-			Status   string `json:"status"`
-			Solution struct {
+			ErrorId          int    `json:"errorId"`
+			Status           string `json:"status"`
+			ErrorCode        string `json:"errorCode"`
+			ErrorDescription string `json:"errorDescription"`
+			Solution         struct {
 				Token string `json:"token"`
 			} `json:"solution"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&taskResult); err != nil {
-			resp.Body.Close()
-			continue
-		}
+
+		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
-		if taskResult.Status == "ready" {
-			result = taskResult.Solution.Token
-			utils.LogMessage("Captcha solved successfully!", "success")
-			break
+		if err != nil {
+			utils.LogMessage(fmt.Sprintf("Failed to read response: %v", err), "warning")
+			continue
+		}
+
+		if err := json.Unmarshal(body, &taskResult); err != nil {
+			utils.LogMessage(fmt.Sprintf("Failed to parse response: %v", err), "warning")
+			continue
+		}
+
+		utils.LogMessage(fmt.Sprintf("Attempt %d: Status = %s", attempt, taskResult.Status), "info")
+
+		if taskResult.ErrorId != 0 {
+			utils.LogMessage(fmt.Sprintf("API Error - ID: %d, Code: %s, Description: %s",
+				taskResult.ErrorId, taskResult.ErrorCode, taskResult.ErrorDescription), "error")
+			return "", fmt.Errorf("captcha solving failed: %s", taskResult.ErrorDescription)
+		}
+
+		switch taskResult.Status {
+		case "processing":
+			utils.LogMessage("Captcha still processing...", "info")
+			continue
+		case "ready":
+			if taskResult.Solution.Token != "" {
+				result = taskResult.Solution.Token
+				utils.LogMessage("Captcha solved successfully!", "success")
+				return result, nil
+			} else {
+				utils.LogMessage("Status ready but no token received", "warning")
+				continue
+			}
+		case "failed":
+			utils.LogMessage("Captcha solving failed", "error")
+			return "", fmt.Errorf("captcha solving failed with status: failed")
+		default:
+			utils.LogMessage(fmt.Sprintf("Unknown status: %s", taskResult.Status), "warning")
+			continue
 		}
 	}
-
-	if result == "" {
-		utils.LogMessage(fmt.Sprintf("Full response: %s", string(body)), "error")
-		return "", fmt.Errorf("failed to get captcha solution")
-	}
-
-	return result, nil
 }
