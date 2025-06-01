@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 	"x-gen/internal/utils"
 )
@@ -16,6 +18,7 @@ type CaptchaServices struct {
 	pageUrl           string
 	antiCaptchaApiUrl string
 	twocaptchaApiUrl  string
+	proxy             string
 }
 
 type Config struct {
@@ -33,6 +36,17 @@ func NewCaptchaServices() *CaptchaServices {
 		pageUrl:           "https://x.com",
 		antiCaptchaApiUrl: "https://api.anti-captcha.com",
 		twocaptchaApiUrl:  "https://api.2captcha.com",
+		proxy:             "",
+	}
+}
+
+func NewCaptchaServicesWithProxy(proxy string) *CaptchaServices {
+	return &CaptchaServices{
+		sitekey:           "2CB16598-CB82-4CF7-B332-5990DB66F3AB",
+		pageUrl:           "https://x.com",
+		antiCaptchaApiUrl: "https://api.anti-captcha.com",
+		twocaptchaApiUrl:  "https://api.2captcha.com",
+		proxy:             proxy,
 	}
 }
 
@@ -47,25 +61,84 @@ func LoadConfig() *Config {
 	if err != nil {
 		panic(err)
 	}
-
 	return &config
+}
+
+func (cs *CaptchaServices) parseProxy() (proxyType, proxyAddress, proxyLogin, proxyPassword string, proxyPort int) {
+	if cs.proxy == "" {
+		return "", "", "", "", 0
+	}
+
+	proxyURL, err := url.Parse(cs.proxy)
+	if err != nil {
+		utils.LogMessage(fmt.Sprintf("Failed to parse proxy URL: %v", err), "error")
+		return "", "", "", "", 0
+	}
+
+	switch strings.ToLower(proxyURL.Scheme) {
+	case "http", "https":
+		proxyType = "http"
+	case "socks4":
+		proxyType = "socks4"
+	case "socks5":
+		proxyType = "socks5"
+	default:
+		proxyType = "http"
+	}
+
+	proxyAddress = proxyURL.Hostname()
+	if proxyURL.Port() != "" {
+		fmt.Sscanf(proxyURL.Port(), "%d", &proxyPort)
+	}
+
+	if proxyURL.User != nil {
+		proxyLogin = proxyURL.User.Username()
+		proxyPassword, _ = proxyURL.User.Password()
+	}
+
+	return proxyType, proxyAddress, proxyLogin, proxyPassword, proxyPort
 }
 
 func (cs *CaptchaServices) SolveCaptcha(blob string) (string, error) {
 	config := LoadConfig()
 	provider := config.CaptchaServices.CaptchaUsing
 
-	switch provider {
-	case "2captcha":
-		return cs.solveCaptcha2(blob)
-	case "antiCaptcha":
-		return cs.antiCaptcha(blob)
-	case "private":
-		return cs.solvedPrivate(blob)
-	default:
-		utils.LogMessage("Invalid captcha provider.", "error")
-		return "", fmt.Errorf("invalid captcha provider")
+	maxRetries := 5
+	retryDelay := 2 * time.Second
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		utils.LogMessage(fmt.Sprintf("Captcha solve attempt %d/%d...", attempt, maxRetries), "process")
+
+		var result string
+		var err error
+
+		switch provider {
+		case "2captcha":
+			result, err = cs.solveCaptcha2(blob)
+		case "antiCaptcha":
+			result, err = cs.antiCaptcha(blob)
+		case "private":
+			result, err = cs.solvedPrivate(blob)
+		default:
+			utils.LogMessage("Invalid captcha provider.", "error")
+			return "", fmt.Errorf("invalid captcha provider")
+		}
+
+		if err == nil && result != "" {
+			utils.LogMessage(fmt.Sprintf("Captcha solved successfully on attempt %d!", attempt), "success")
+			return result, nil
+		}
+
+		utils.LogMessage(fmt.Sprintf("Captcha solve attempt %d failed: %v", attempt, err), "warning")
+
+		if attempt < maxRetries {
+			utils.LogMessage(fmt.Sprintf("Waiting %v before retry...", retryDelay), "info")
+			time.Sleep(retryDelay)
+			retryDelay = retryDelay * 2
+		}
 	}
+
+	return "", fmt.Errorf("failed to solve captcha after %d attempts", maxRetries)
 }
 
 func (cs *CaptchaServices) solvedPrivate(blob string) (string, error) {
@@ -181,19 +254,35 @@ func (cs *CaptchaServices) antiCaptcha(blob string) (string, error) {
 	apiKey := config.CaptchaServices.AntiCaptchaApikey[0]
 
 	formattedBlob := fmt.Sprintf("{\"blob\":\"%s\"}", blob)
+	proxyType, proxyAddress, proxyLogin, proxyPassword, proxyPort := cs.parseProxy()
 
 	taskData := map[string]interface{}{
 		"clientKey": apiKey,
 		"task": map[string]interface{}{
-			"type":                     "FunCaptchaTaskProxyless",
+			"type":                     "FunCaptchaTask",
 			"websiteURL":               cs.pageUrl,
 			"websitePublicKey":         cs.sitekey,
 			"funcaptchaApiJSSubdomain": "client-api.arkoselabs.com",
 			"data":                     formattedBlob,
+			"userAgent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
 		},
 		"softId": 0,
 	}
 
+	if proxyAddress != "" {
+		task := taskData["task"].(map[string]interface{})
+		task["proxyType"] = proxyType
+		task["proxyAddress"] = proxyAddress
+		task["proxyPort"] = proxyPort
+		task["proxyLogin"] = proxyLogin
+		task["proxyPassword"] = proxyPassword
+
+		utils.LogMessage(fmt.Sprintf("Using proxy: %s:%d", proxyAddress, proxyPort), "info")
+	} else {
+		task := taskData["task"].(map[string]interface{})
+		task["type"] = "FunCaptchaTaskProxyless"
+		utils.LogMessage("No proxy configured, using proxyless mode", "info")
+	}
 	jsonData, err := json.Marshal(taskData)
 	if err != nil {
 		return "", err
@@ -204,18 +293,30 @@ func (cs *CaptchaServices) antiCaptcha(blob string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %v", err)
+	}
 
 	var createTaskResp struct {
-		ErrorId int    `json:"errorId"`
-		TaskId  int    `json:"taskId"`
-		Status  string `json:"status"`
+		ErrorId          int    `json:"errorId"`
+		TaskId           int    `json:"taskId"`
+		Status           string `json:"status"`
+		ErrorCode        string `json:"errorCode"`
+		ErrorDescription string `json:"errorDescription"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&createTaskResp); err != nil {
-		return "", err
+
+	if err := json.Unmarshal(body, &createTaskResp); err != nil {
+		utils.LogMessage(fmt.Sprintf("Failed to parse response: %s", string(body)), "error")
+		return "", fmt.Errorf("failed to parse response: %v", err)
 	}
 
 	if createTaskResp.ErrorId != 0 || createTaskResp.TaskId == 0 {
-		return "", fmt.Errorf("failed to create task")
+		errorMsg := fmt.Sprintf("AntiCaptcha API Error - ID: %d, Code: %s, Description: %s",
+			createTaskResp.ErrorId, createTaskResp.ErrorCode, createTaskResp.ErrorDescription)
+		utils.LogMessage(errorMsg, "error")
+		utils.LogMessage(fmt.Sprintf("Full response: %s", string(body)), "error")
+		return "", fmt.Errorf("failed to create task: %s", errorMsg)
 	}
 
 	utils.LogMessage(fmt.Sprintf("Task created with ID: %d", createTaskResp.TaskId), "process")
@@ -273,40 +374,69 @@ func (cs *CaptchaServices) solveCaptcha2(blob string) (string, error) {
 
 	formattedBlob := fmt.Sprintf("{\"blob\":\"%s\"}", blob)
 
+	proxyType, proxyAddress, proxyLogin, proxyPassword, proxyPort := cs.parseProxy()
+
 	taskData := map[string]interface{}{
 		"clientKey": apiKey,
 		"task": map[string]interface{}{
-			"type":                     "FunCaptchaTaskProxyless",
+			"type":                     "FunCaptchaTask",
 			"websiteURL":               cs.pageUrl,
 			"websitePublicKey":         cs.sitekey,
 			"funcaptchaApiJSSubdomain": "client-api.arkoselabs.com",
 			"data":                     formattedBlob,
+			"userAgent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
 		},
 		"softId": 0,
 	}
+	if proxyAddress != "" {
+		task := taskData["task"].(map[string]interface{})
+		task["proxyType"] = proxyType
+		task["proxyAddress"] = proxyAddress
+		task["proxyPort"] = proxyPort
+		task["proxyLogin"] = proxyLogin
+		task["proxyPassword"] = proxyPassword
 
+		utils.LogMessage(fmt.Sprintf("Using proxy: %s:%d", proxyAddress, proxyPort), "info")
+	} else {
+		task := taskData["task"].(map[string]interface{})
+		task["type"] = "FunCaptchaTaskProxyless"
+		utils.LogMessage("No proxy configured, using proxyless mode", "info")
+	}
 	jsonData, err := json.Marshal(taskData)
 	if err != nil {
 		return "", err
 	}
+
+	utils.LogMessage(fmt.Sprintf("Sending request to 2Captcha: %s", string(jsonData)), "info")
 
 	resp, err := http.Post(cs.twocaptchaApiUrl+"/createTask", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %v", err)
+	}
 
 	var createTaskResp struct {
-		ErrorId int    `json:"errorId"`
-		TaskId  int    `json:"taskId"`
-		Status  string `json:"status"`
+		ErrorId          int    `json:"errorId"`
+		TaskId           int    `json:"taskId"`
+		Status           string `json:"status"`
+		ErrorCode        string `json:"errorCode"`
+		ErrorDescription string `json:"errorDescription"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&createTaskResp); err != nil {
-		return "", err
+	if err := json.Unmarshal(body, &createTaskResp); err != nil {
+		utils.LogMessage(fmt.Sprintf("Failed to parse response: %s", string(body)), "error")
+		return "", fmt.Errorf("failed to parse response: %v", err)
 	}
 
 	if createTaskResp.ErrorId != 0 || createTaskResp.TaskId == 0 {
-		return "", fmt.Errorf("failed to create task")
+		errorMsg := fmt.Sprintf("2Captcha API Error - ID: %d, Code: %s, Description: %s",
+			createTaskResp.ErrorId, createTaskResp.ErrorCode, createTaskResp.ErrorDescription)
+		utils.LogMessage(errorMsg, "error")
+		utils.LogMessage(fmt.Sprintf("Full response: %s", string(body)), "error")
+		return "", fmt.Errorf("failed to create task: %s", errorMsg)
 	}
 
 	utils.LogMessage(fmt.Sprintf("Task created with ID: %d", createTaskResp.TaskId), "process")
