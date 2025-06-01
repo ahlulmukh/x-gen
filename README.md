@@ -80,17 +80,20 @@ x-gen/
 ### Steps
 
 1. **Clone or download the project**
+
    ```bash
    git clone <repository-url>
    cd x-gen
    ```
 
 2. **Install dependencies**
+
    ```bash
    go mod tidy
    ```
 
 3. **Build the application**
+
    ```bash
    go build -o x-gen.exe cmd/main.go
    ```
@@ -109,6 +112,7 @@ On first run, the application will guide you through creating a configuration fi
 Choose one of the supported captcha services:
 
 #### Option 1: AntiCaptcha
+
 ```json
 {
   "captchaServices": {
@@ -119,6 +123,7 @@ Choose one of the supported captcha services:
 ```
 
 #### Option 2: 2Captcha
+
 ```json
 {
   "captchaServices": {
@@ -131,6 +136,7 @@ Choose one of the supported captcha services:
 ### Editing Configuration
 
 You can modify the configuration anytime by:
+
 1. Selecting option `2. Edit Config` from the main menu
 2. Manually editing `config.json` file
 
@@ -139,11 +145,13 @@ You can modify the configuration anytime by:
 ### Basic Usage
 
 1. **Start the application**
+
    ```bash
    ./x-gen.exe
    ```
 
 2. **Main Menu Options**
+
    ```
    1. X.com Account Generator  - Generate new accounts
    2. Edit Config             - Modify configuration
@@ -166,14 +174,18 @@ You can modify the configuration anytime by:
 ## 📄 File Formats
 
 ### accounts.txt
+
 Generated accounts are saved in the format:
+
 ```
 email@mail.tm:generatedPassword:@username
 email2@mail.tm:generatedPassword2:@username2
 ```
 
 ### authtoken.txt
+
 Authentication tokens are saved one per line:
+
 ```
 auth_token_1
 auth_token_2
@@ -181,7 +193,9 @@ auth_token_3
 ```
 
 ### proxy.txt (optional)
+
 Proxy list in the format:
+
 ```
 user:pass@host:port
 http://username:password@proxy.example.com:8080
@@ -210,6 +224,7 @@ The application uses **Mail.tm** service for temporary email creation:
 ### Fallback Method
 
 If automatic email verification fails, the application will:
+
 - Display the email address used
 - Prompt for manual verification code entry
 - Continue with the registration process
@@ -219,12 +234,14 @@ If automatic email verification fails, the application will:
 ### Supported Services
 
 #### 1. AntiCaptcha
+
 - **Website**: https://anti-captcha.com/
 - **Pricing**: Pay per captcha solved
 - **Setup**: Get API key from dashboard
 - **Recommended**: Yes, generally faster
 
 #### 2. 2Captcha
+
 - **Website**: https://2captcha.com/
 - **Pricing**: Pay per captcha solved
 - **Setup**: Get API key from account settings
@@ -264,11 +281,13 @@ If automatic email verification fails, the application will:
 ### Generated Files
 
 1. **accounts.txt**
+
    - Contains all successfully created accounts
    - Format: `email:password:username`
    - Automatically updated after each successful generation
 
 2. **authtoken.txt**
+
    - Contains authentication tokens for created accounts
    - One token per line
    - Can be used for API access
@@ -287,21 +306,25 @@ All output files are created in the same directory as the executable.
 ### Common Issues
 
 #### 1. Captcha Solving Fails
+
 - **Check API key**: Ensure your captcha service API key is correct
 - **Check balance**: Verify you have sufficient funds in your captcha service account
 - **Service status**: Check if the captcha service is operational
 
 #### 2. Email Verification Fails
+
 - **Network issues**: Check your internet connection
 - **Mail.tm status**: The service might be temporarily unavailable
 - **Manual verification**: Use the fallback manual verification option
 
 #### 3. Account Creation Fails
+
 - **Rate limiting**: X.com might be rate limiting requests
 - **Proxy issues**: Try using different proxies or no proxy
 - **Captcha issues**: Ensure captcha service is working properly
 
 #### 4. Proxy Connection Issues
+
 - **Format check**: Verify proxy format is correct
 - **Credentials**: Ensure proxy username/password are correct
 - **Proxy status**: Test if proxies are working
@@ -322,6 +345,14 @@ Contributions are welcome! Please:
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
+
+## Donation
+
+If you would like to support the development of this project, you can make a donation using the following addresses:
+
+- Solana: `FdHsx8He55QgRCSv6NMEpFfkjXFsXFEeWEpJpo7sUQZe`
+- EVM: `0x406de5ec09201002c45fdd408ab23159cd12fa3e`
+- BTC: `bc1prze475lgalevngrhwq6r9wyng3rl3zskyru4rn4k6j8kwzmmczmqcd7u7y`
 
 ## ⚠️ Disclaimer
 
