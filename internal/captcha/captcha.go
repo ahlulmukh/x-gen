@@ -103,42 +103,17 @@ func (cs *CaptchaServices) SolveCaptcha(blob string) (string, error) {
 	config := LoadConfig()
 	provider := config.CaptchaServices.CaptchaUsing
 
-	maxRetries := 5
-	retryDelay := 2 * time.Second
-
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		utils.LogMessage(fmt.Sprintf("Captcha solve attempt %d/%d...", attempt, maxRetries), "process")
-
-		var result string
-		var err error
-
-		switch provider {
-		case "2captcha":
-			result, err = cs.solveCaptcha2(blob)
-		case "antiCaptcha":
-			result, err = cs.antiCaptcha(blob)
-		case "private":
-			result, err = cs.solvedPrivate(blob)
-		default:
-			utils.LogMessage("Invalid captcha provider.", "error")
-			return "", fmt.Errorf("invalid captcha provider")
-		}
-
-		if err == nil && result != "" {
-			utils.LogMessage(fmt.Sprintf("Captcha solved successfully on attempt %d!", attempt), "success")
-			return result, nil
-		}
-
-		utils.LogMessage(fmt.Sprintf("Captcha solve attempt %d failed: %v", attempt, err), "warning")
-
-		if attempt < maxRetries {
-			utils.LogMessage(fmt.Sprintf("Waiting %v before retry...", retryDelay), "info")
-			time.Sleep(retryDelay)
-			retryDelay = retryDelay * 2
-		}
+	switch provider {
+	case "2captcha":
+		return cs.solveCaptcha2(blob)
+	case "antiCaptcha":
+		return cs.antiCaptcha(blob)
+	case "private":
+		return cs.solvedPrivate(blob)
+	default:
+		utils.LogMessage("Invalid captcha provider.", "error")
+		return "", fmt.Errorf("invalid captcha provider")
 	}
-
-	return "", fmt.Errorf("failed to solve captcha after %d attempts", maxRetries)
 }
 
 func (cs *CaptchaServices) solvedPrivate(blob string) (string, error) {
@@ -314,7 +289,6 @@ func (cs *CaptchaServices) antiCaptcha(blob string) (string, error) {
 	if createTaskResp.ErrorId != 0 || createTaskResp.TaskId == 0 {
 		errorMsg := fmt.Sprintf("AntiCaptcha API Error - ID: %d, Code: %s, Description: %s",
 			createTaskResp.ErrorId, createTaskResp.ErrorCode, createTaskResp.ErrorDescription)
-		utils.LogMessage(errorMsg, "error")
 		utils.LogMessage(fmt.Sprintf("Full response: %s", string(body)), "error")
 		return "", fmt.Errorf("failed to create task: %s", errorMsg)
 	}
@@ -327,7 +301,7 @@ func (cs *CaptchaServices) antiCaptcha(blob string) (string, error) {
 	}
 
 	var result string
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 999; i++ {
 		time.Sleep(5 * time.Second)
 
 		jsonData, err = json.Marshal(getTaskData)
@@ -361,6 +335,7 @@ func (cs *CaptchaServices) antiCaptcha(blob string) (string, error) {
 	}
 
 	if result == "" {
+		utils.LogMessage(fmt.Sprintf("Full response: %s", string(body)), "error")
 		return "", fmt.Errorf("failed to get captcha solution")
 	}
 
@@ -434,7 +409,6 @@ func (cs *CaptchaServices) solveCaptcha2(blob string) (string, error) {
 	if createTaskResp.ErrorId != 0 || createTaskResp.TaskId == 0 {
 		errorMsg := fmt.Sprintf("2Captcha API Error - ID: %d, Code: %s, Description: %s",
 			createTaskResp.ErrorId, createTaskResp.ErrorCode, createTaskResp.ErrorDescription)
-		utils.LogMessage(errorMsg, "error")
 		utils.LogMessage(fmt.Sprintf("Full response: %s", string(body)), "error")
 		return "", fmt.Errorf("failed to create task: %s", errorMsg)
 	}
@@ -481,6 +455,7 @@ func (cs *CaptchaServices) solveCaptcha2(blob string) (string, error) {
 	}
 
 	if result == "" {
+		utils.LogMessage(fmt.Sprintf("Full response: %s", string(body)), "error")
 		return "", fmt.Errorf("failed to get captcha solution")
 	}
 
